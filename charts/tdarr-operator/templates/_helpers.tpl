@@ -68,6 +68,8 @@ the node pods. Claim name for created PVCs is "<fullname>-<key>".
   {{- if $p.existingClaim }}
   persistentVolumeClaim:
     claimName: {{ $p.existingClaim }}
+  {{- else if $p.volume }}
+  {{- toYaml $p.volume | nindent 2 }}
   {{- else if $p.create }}
   persistentVolumeClaim:
     claimName: {{ $full }}-{{ $key }}

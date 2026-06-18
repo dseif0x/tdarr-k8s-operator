@@ -150,13 +150,24 @@ controller:
 # node pods at the same paths. If those pods may schedule onto different hosts
 # (the usual case when the node needs a GPU), use ReadWriteMany storage
 # (e.g. NFS/CephFS). The emptyDir fallback only works for single-pod demos.
+#
+# For each entry the volume source is resolved in this order:
+#   1. existingClaim  -> mount that PersistentVolumeClaim
+#   2. volume         -> use this inline VolumeSource verbatim (e.g. nfs, hostPath)
+#   3. create: true   -> chart creates a PVC (storageClass/accessModes/size)
+#   4. otherwise      -> emptyDir (non-persistent; demo only)
 # -----------------------------------------------------------------------------
 persistence:
   # Tdarr server config / database / logs (server-only).
   config:
     enabled: true
     existingClaim: ""
-    # If no existingClaim and create=false, an emptyDir is used (non-persistent).
+    # Inline VolumeSource, e.g.
+    #   volume:
+    #     nfs:
+    #       server: nfs.example.com
+    #       path: /export/tdarr/config
+    volume: {}
     create: false
     storageClass: ""
     accessModes: ["ReadWriteOnce"]
@@ -167,6 +178,12 @@ persistence:
     enabled: true
     mountPath: /media
     existingClaim: ""
+    # Inline VolumeSource, e.g.
+    #   volume:
+    #     nfs:
+    #       server: nfs.example.com
+    #       path: /export/media
+    volume: {}
     create: false
     storageClass: ""
     accessModes: ["ReadWriteMany"]
@@ -177,6 +194,7 @@ persistence:
     enabled: true
     mountPath: /temp
     existingClaim: ""
+    volume: {}
     create: false
     storageClass: ""
     accessModes: ["ReadWriteMany"]

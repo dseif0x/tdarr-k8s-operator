@@ -1,6 +1,6 @@
 {{- range $key := list "config" "media" "cache" }}
 {{- $p := index $.Values.persistence $key }}
-{{- if and $p.enabled $p.create (not $p.existingClaim) }}
+{{- if and $p.enabled $p.create (not $p.existingClaim) (not $p.volume) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
