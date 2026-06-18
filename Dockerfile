@@ -1,6 +1,7 @@
 # Build the controller binary.
 FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS build
 
+
 WORKDIR /src
 
 # Cache dependencies first.
