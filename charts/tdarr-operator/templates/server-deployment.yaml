@@ -1,0 +1,109 @@
+{{- $cfg := .Values.persistence.config -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tdarr-operator.serverName" . }}
+  labels:
+    {{- include "tdarr-operator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  replicas: 1
+  # Tdarr stores its database on a single RWO volume; never run two at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "tdarr-operator.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        {{- include "tdarr-operator.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: tdarr-server
+          image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}"
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          {{- with .Values.server.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: web
+              containerPort: {{ .Values.server.webUIPort }}
+            - name: server
+              containerPort: {{ .Values.server.serverPort }}
+          env:
+            - name: serverIP
+              value: "0.0.0.0"
+            - name: serverPort
+              value: {{ .Values.server.serverPort | quote }}
+            - name: webUIPort
+              value: {{ .Values.server.webUIPort | quote }}
+            - name: internalNode
+              value: {{ .Values.server.internalNode | quote }}
+            - name: inContainer
+              value: "true"
+            {{- range $k, $v := .Values.server.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+            {{- with .Values.server.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            {{- if $cfg.enabled }}
+            - name: config
+              mountPath: /app/server
+              subPath: server
+            - name: config
+              mountPath: /app/configs
+              subPath: configs
+            - name: config
+              mountPath: /app/logs
+              subPath: logs
+            {{- end }}
+            {{- include "tdarr-operator.sharedVolumeMounts" . | nindent 12 }}
+          {{- with .Values.server.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        {{- if $cfg.enabled }}
+        - name: config
+          {{- if $cfg.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ $cfg.existingClaim }}
+          {{- else if $cfg.create }}
+          persistentVolumeClaim:
+            claimName: {{ include "tdarr-operator.fullname" . }}-config
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- end }}
+        {{- include "tdarr-operator.sharedVolumes" . | nindent 8 }}
+      {{- with .Values.server.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

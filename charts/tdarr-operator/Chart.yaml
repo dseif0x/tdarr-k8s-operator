@@ -1,0 +1,18 @@
+apiVersion: v2
+name: tdarr-operator
+description: Deploys a Tdarr server and an operator that provisions on-demand (e.g. GPU) Tdarr transcode nodes as Kubernetes Jobs when there is work to do, and removes them when idle.
+type: application
+version: 0.1.0
+# appVersion tracks the tdarr-operator controller image tag.
+appVersion: "0.1.0"
+keywords:
+  - tdarr
+  - transcode
+  - operator
+  - gpu
+  - media
+home: https://github.com/dseif0x/tdarr-k8s-operator
+sources:
+  - https://github.com/dseif0x/tdarr-k8s-operator
+maintainers:
+  - name: dseif0x

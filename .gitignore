@@ -1,0 +1,19 @@
+# Binaries
+/tdarr-operator
+*.exe
+/dist/
+/bin/
+
+# Go
+*.test
+*.out
+vendor/
+
+# Helm
+*.tgz
+charts/**/charts/
+
+# Editor/OS
+.idea/
+.vscode/
+.DS_Store

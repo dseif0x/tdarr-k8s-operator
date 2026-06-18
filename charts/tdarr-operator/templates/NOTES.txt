@@ -1,0 +1,37 @@
+tdarr-operator has been installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Components:
+  - Tdarr server : deployment/{{ include "tdarr-operator.serverName" . }}
+  - Operator     : deployment/{{ include "tdarr-operator.controllerName" . }}
+  - Node Jobs    : created on demand as job/{{ include "tdarr-operator.nodeJobName" . }}
+
+Access the Tdarr web UI:
+{{- if .Values.server.ingress.enabled }}
+  http(s)://{{ (index .Values.server.ingress.hosts 0).host }}/
+{{- else if eq .Values.server.service.type "ClusterIP" }}
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "tdarr-operator.serverName" . }} {{ .Values.server.webUIPort }}:{{ .Values.server.webUIPort }}
+  then open http://localhost:{{ .Values.server.webUIPort }}
+{{- else }}
+  Service type is {{ .Values.server.service.type }} on port {{ .Values.server.webUIPort }}.
+{{- end }}
+
+How it works:
+  The operator polls the server every {{ .Values.controller.pollInterval }}. When the
+  transcode or health-check queue is non-empty it creates the node Job (with your
+  configured runtimeClass/tolerations/resources). Once the queue drains and the
+  node is idle for {{ .Values.controller.idleTimeout }}, the Job is deleted.
+
+{{- $shared := false }}
+{{- range $k := list "media" "cache" }}
+{{- $p := index $.Values.persistence $k }}
+{{- if and $p.enabled (not $p.existingClaim) (not $p.create) }}
+{{- $shared = true }}
+{{- end }}
+{{- end }}
+{{- if $shared }}
+
+WARNING: persistence.media and/or persistence.cache are using an emptyDir
+  fallback. The server and the on-demand node will NOT share these volumes, so
+  transcoding will fail. Configure existingClaim (recommended: ReadWriteMany)
+  or set create=true with an RWX storageClass before transcoding real files.
+{{- end }}

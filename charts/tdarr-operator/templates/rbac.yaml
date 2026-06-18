@@ -1,0 +1,30 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "tdarr-operator.controllerName" . }}
+  labels:
+    {{- include "tdarr-operator.labels" . | nindent 4 }}
+rules:
+  # Manage the on-demand transcode node Jobs.
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  # Inspect node pods (status/troubleshooting) and clean them up.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "tdarr-operator.controllerName" . }}
+  labels:
+    {{- include "tdarr-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "tdarr-operator.controllerName" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "tdarr-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}

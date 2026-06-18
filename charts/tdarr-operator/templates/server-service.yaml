@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tdarr-operator.serverName" . }}
+  labels:
+    {{- include "tdarr-operator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+  {{- with .Values.server.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.server.service.type }}
+  selector:
+    {{- include "tdarr-operator.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+  ports:
+    - name: web
+      port: {{ .Values.server.webUIPort }}
+      targetPort: web
+    - name: server
+      port: {{ .Values.server.serverPort }}
+      targetPort: server

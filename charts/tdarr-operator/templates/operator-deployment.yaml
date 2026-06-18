@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tdarr-operator.controllerName" . }}
+  labels:
+    {{- include "tdarr-operator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: operator
+spec:
+  replicas: 1
+  # The controller mutates a single node Job; a single replica avoids races.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "tdarr-operator.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: operator
+  template:
+    metadata:
+      labels:
+        {{- include "tdarr-operator.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: operator
+      annotations:
+        # Roll the controller when the node template changes.
+        checksum/node-template: {{ include (print $.Template.BasePath "/node-template-configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "tdarr-operator.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controller.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: operator
+          image: "{{ .Values.controller.image.repository }}:{{ .Values.controller.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.controller.image.pullPolicy }}
+          {{- with .Values.controller.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: TDARR_SERVER_URL
+              value: {{ include "tdarr-operator.serverURL" . | quote }}
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NODE_JOB_NAME
+              value: {{ include "tdarr-operator.nodeJobName" . | quote }}
+            - name: NODE_JOB_TEMPLATE_PATH
+              value: /etc/tdarr-operator/node-job.yaml
+            - name: POLL_INTERVAL
+              value: {{ .Values.controller.pollInterval | quote }}
+            - name: IDLE_TIMEOUT
+              value: {{ .Values.controller.idleTimeout | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.controller.logLevel | quote }}
+            - name: TRANSCODE_QUEUE_FIELD
+              value: {{ .Values.controller.transcodeQueueField | quote }}
+            - name: HEALTHCHECK_QUEUE_FIELD
+              value: {{ .Values.controller.healthCheckQueueField | quote }}
+          volumeMounts:
+            - name: node-template
+              mountPath: /etc/tdarr-operator
+              readOnly: true
+          {{- with .Values.controller.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: node-template
+          configMap:
+            name: {{ include "tdarr-operator.nodeTemplateConfigMap" . }}
+      {{- with .Values.controller.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controller.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controller.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

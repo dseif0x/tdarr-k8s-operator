@@ -1,0 +1,187 @@
+# Default values for tdarr-operator.
+
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+podAnnotations: {}
+
+serviceAccount:
+  # Create a ServiceAccount for the controller. It needs RBAC to manage node Jobs.
+  create: true
+  name: ""
+  annotations: {}
+
+# -----------------------------------------------------------------------------
+# Tdarr server (coordinator + web UI). Long-running Deployment.
+# -----------------------------------------------------------------------------
+server:
+  image:
+    repository: ghcr.io/haveagitgat/tdarr
+    tag: "2.45.01"
+    pullPolicy: IfNotPresent
+
+  # The Tdarr server ships with a built-in transcode node. Keep it disabled so
+  # all transcoding happens on the on-demand node Jobs managed by the operator.
+  # Set to true if you also want the server itself to transcode (no GPU knobs).
+  internalNode: false
+
+  webUIPort: 8265
+  serverPort: 8266
+
+  # Common Tdarr/LinuxServer-style settings.
+  env:
+    PUID: "1000"
+    PGID: "1000"
+    TZ: "UTC"
+  # Additional raw env entries (list of {name,value} or valueFrom).
+  extraEnv: []
+
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podSecurityContext: {}
+  securityContext: {}
+
+  service:
+    type: ClusterIP
+    annotations: {}
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: tdarr.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+# -----------------------------------------------------------------------------
+# On-demand transcode node. Created as a Job by the operator when work appears
+# and deleted once the queue drains and the node goes idle.
+#
+# This is where the GPU scheduling knobs live.
+# -----------------------------------------------------------------------------
+node:
+  image:
+    repository: ghcr.io/haveagitgat/tdarr_node
+    tag: "2.45.01"
+    pullPolicy: IfNotPresent
+
+  # Name reported to the Tdarr server.
+  name: k8s-gpu-node
+
+  # --- GPU / scheduling configuration --------------------------------------
+  # e.g. "nvidia"
+  runtimeClassName: ""
+  # e.g.
+  #   - key: "nvidia.com/gpu"
+  #     operator: Exists
+  #     effect: NoSchedule
+  tolerations: []
+  nodeSelector: {}
+  affinity: {}
+  # e.g.
+  #   limits:
+  #     nvidia.com/gpu: 1
+  resources: {}
+  # -------------------------------------------------------------------------
+
+  env:
+    PUID: "1000"
+    PGID: "1000"
+    TZ: "UTC"
+    inContainer: "true"
+  extraEnv: []
+
+  podSecurityContext: {}
+  securityContext: {}
+
+  # Job behaviour.
+  backoffLimit: 6
+  # 0 disables the active deadline (node runs until the operator removes it).
+  activeDeadlineSeconds: 0
+  # Extra labels/annotations applied to the node Job and its pods.
+  labels: {}
+  annotations: {}
+
+# -----------------------------------------------------------------------------
+# The operator/controller that watches the server queue and manages node Jobs.
+# -----------------------------------------------------------------------------
+controller:
+  image:
+    repository: ghcr.io/dseif0x/tdarr-k8s-operator
+    # Defaults to the chart appVersion when empty.
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  # How often to poll the Tdarr server.
+  pollInterval: 15s
+  # How long the queue must stay empty and all workers idle before the node
+  # Job is removed (prevents thrashing between consecutive files).
+  idleTimeout: 120s
+  # info | debug
+  logLevel: info
+
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podSecurityContext:
+    runAsNonRoot: true
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+
+  # Advanced: override the Tdarr statistics field names used to read queue
+  # depth, in case a future Tdarr release renames them.
+  transcodeQueueField: table1Count
+  healthCheckQueueField: table4Count
+
+# -----------------------------------------------------------------------------
+# Shared storage.
+#
+# IMPORTANT: `media` and `cache` must be reachable by BOTH the server and the
+# node pods at the same paths. If those pods may schedule onto different hosts
+# (the usual case when the node needs a GPU), use ReadWriteMany storage
+# (e.g. NFS/CephFS). The emptyDir fallback only works for single-pod demos.
+# -----------------------------------------------------------------------------
+persistence:
+  # Tdarr server config / database / logs (server-only).
+  config:
+    enabled: true
+    existingClaim: ""
+    # If no existingClaim and create=false, an emptyDir is used (non-persistent).
+    create: false
+    storageClass: ""
+    accessModes: ["ReadWriteOnce"]
+    size: 2Gi
+
+  # Media library, mounted on server and node.
+  media:
+    enabled: true
+    mountPath: /media
+    existingClaim: ""
+    create: false
+    storageClass: ""
+    accessModes: ["ReadWriteMany"]
+    size: 100Gi
+
+  # Transcode cache, mounted on server and node.
+  cache:
+    enabled: true
+    mountPath: /temp
+    existingClaim: ""
+    create: false
+    storageClass: ""
+    accessModes: ["ReadWriteMany"]
+    size: 50Gi
+
+# Arbitrary extra volumes/mounts added to BOTH the server and node pods.
+extraVolumes: []
+extraVolumeMounts: []

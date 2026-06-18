@@ -1,0 +1,21 @@
+{{- range $key := list "config" "media" "cache" }}
+{{- $p := index $.Values.persistence $key }}
+{{- if and $p.enabled $p.create (not $p.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "tdarr-operator.fullname" $ }}-{{ $key }}
+  labels:
+    {{- include "tdarr-operator.labels" $ | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml $p.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ $p.size }}
+  {{- if $p.storageClass }}
+  storageClassName: {{ $p.storageClass }}
+  {{- end }}
+{{- end }}
+{{- end }}
