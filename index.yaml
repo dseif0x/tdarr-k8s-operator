@@ -3,6 +3,30 @@ entries:
   tdarr-operator:
   - apiVersion: v2
     appVersion: 0.1.0
+    created: "2026-06-18T09:37:26.143414631Z"
+    description: Deploys a Tdarr server and an operator that provisions on-demand
+      (e.g. GPU) Tdarr transcode nodes as Kubernetes Jobs when there is work to do,
+      and removes them when idle.
+    digest: a7da91edd49e48d91048ec7ce70e23d77f38d8f59ae4a88b68d6da943de3adc3
+    home: https://github.com/dseif0x/tdarr-k8s-operator
+    icon: https://raw.githubusercontent.com/HaveAGitGat/Tdarr/master/assets/logo.png
+    keywords:
+    - tdarr
+    - transcode
+    - operator
+    - gpu
+    - media
+    maintainers:
+    - name: dseif0x
+    name: tdarr-operator
+    sources:
+    - https://github.com/dseif0x/tdarr-k8s-operator
+    type: application
+    urls:
+    - https://github.com/dseif0x/tdarr-k8s-operator/releases/download/tdarr-operator-0.1.2/tdarr-operator-0.1.2.tgz
+    version: 0.1.2
+  - apiVersion: v2
+    appVersion: 0.1.0
     created: "2026-06-18T09:21:01.71426517Z"
     description: Deploys a Tdarr server and an operator that provisions on-demand
       (e.g. GPU) Tdarr transcode nodes as Kubernetes Jobs when there is work to do,
@@ -25,4 +49,4 @@ entries:
     urls:
     - https://github.com/dseif0x/tdarr-k8s-operator/releases/download/tdarr-operator-0.1.1/tdarr-operator-0.1.1.tgz
     version: 0.1.1
-generated: "2026-06-18T09:21:01.71427073Z"
+generated: "2026-06-18T09:37:26.143422312Z"
