@@ -87,6 +87,8 @@ spec:
           {{- if $cfg.existingClaim }}
           persistentVolumeClaim:
             claimName: {{ $cfg.existingClaim }}
+          {{- else if $cfg.volume }}
+          {{- toYaml $cfg.volume | nindent 10 }}
           {{- else if $cfg.create }}
           persistentVolumeClaim:
             claimName: {{ include "tdarr-operator.fullname" . }}-config
